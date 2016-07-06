@@ -1,5 +1,6 @@
 package com.github.dreamhead.moco;
 
+import com.github.dreamhead.moco.handler.RequestAwareResponseHandler;
 import com.google.common.net.HttpHeaders;
 import org.apache.http.Header;
 import org.apache.http.HttpVersion;
@@ -141,6 +142,26 @@ public class MocoTest extends AbstractMocoHttpTest {
             @Override
             public void run() throws IOException {
                 assertThat(helper.postContent(root(), "foo"), is("bar"));
+            }
+        });
+    }
+
+    @Test
+    public void should_have_access_to_request_in_response_handler() throws Exception {
+        server.request(by(uri("/foo"))).response(
+                new RequestAwareResponseHandler() {
+                    public ResponseHandler withRequest(HttpRequest httpRequest) {
+                        return header("token", httpRequest.getQueries().get("token")[0]);
+                    }
+                },
+                with("bar")
+        );
+
+        running(server, new Runnable() {
+            @Override
+            public void run() throws IOException {
+                assertThat(helper.getResponse(remoteUrl("/foo?token=1234")).getFirstHeader("token").getValue(), is("1234"));
+                assertThat(helper.get(remoteUrl("/foo?token=1234")), is("bar"));
             }
         });
     }
